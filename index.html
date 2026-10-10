@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Adam Pollack | PPSC | Workmap</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+
+  <!-- Warm up connections to the CDNs used below -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+
+  <!-- Tailwind CSS (prebuilt; regenerate with: npx tailwindcss@3.4.17 -c tailwind.config.js -o tailwind.css --minify) -->
+  <link rel="stylesheet" href="tailwind.css" />
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Scripts use `defer`: they download in parallel without blocking page
+       rendering, then run in this order (before app.js) once HTML is parsed. -->
+  <!-- Config file -->
+  <script src="config.js" defer></script>
+
+  <!-- Firebase JS SDK (Compat Libraries) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js" defer></script>
+
+  <!-- html2canvas for Reliable PNG Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+</head>
+<body class="theme-light w-screen h-screen overflow-hidden">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('mindmap_whiteboard_theme') || 'light';
+        document.body.classList.remove('theme-light', 'theme-dark', 'theme-black');
+        document.body.classList.add('theme-' + savedTheme);
+      } catch (e) {}
+    })();
+  </script>
+
+  <div id="splash-screen" class="fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 select-none">
+    <div class="flex flex-col items-center gap-6">
+      <img src="novarablack.png" alt="Novara" class="w-64 max-w-[70vw] object-contain animate-pulse-zoom drop-shadow-sm" />
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style="animation-delay: 0s;"></div>
+        <div class="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style="animation-delay: 0.15s;"></div>
+        <div class="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style="animation-delay: 0.3s;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container">
+    
+    <aside id="sidebar" class="w-64 h-full bg-white border-r border-slate-200 z-40 flex flex-col justify-between shrink-0 shadow-sm">
+      <div class="flex flex-col">
+        <div class="h-16 px-4 border-b border-slate-100 flex items-center justify-between sidebar-header">
+          <div class="flex items-center gap-2.5 overflow-hidden sidebar-brand">
+            <img src="adam.jpeg" alt="Adam" class="w-9 h-9 rounded-xl object-cover shrink-0 shadow-sm" />
+            <div class="flex flex-col sidebar-label overflow-hidden">
+              <span class="font-bold text-sm leading-none truncate">Adam Pollack | PPSC</span>
+              <span class="text-[10px] opacity-60 font-medium truncate mt-0.5">Mindmap & Outline</span>
+            </div>
+          </div>
+          <button id="btn-toggle-sidebar" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors shrink-0">
+            <i class="fa-solid fa-bars text-sm"></i>
+          </button>
+        </div>
+
+        <div class="p-3 flex flex-col gap-1.5">
+          <button id="nav-canvas" class="sidebar-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-solid fa-circle-nodes text-base shrink-0"></i>
+            <span class="sidebar-label">Canvas View</span>
+          </button>
+
+          <button id="nav-hierarchy" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-solid fa-sitemap text-base shrink-0"></i>
+            <span class="sidebar-label">Hierarchy View</span>
+          </button>
+
+          <button id="nav-inventory" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-solid fa-table-list text-base shrink-0"></i>
+            <span class="sidebar-label">Inventory List</span>
+          </button>
+
+          <button id="nav-tasks" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-solid fa-list-check text-base shrink-0"></i>
+            <span class="sidebar-label">Tasks</span>
+          </button>
+
+          <button id="nav-calendar" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-regular fa-calendar-days text-base shrink-0"></i>
+            <span class="sidebar-label">Calendar</span>
+          </button>
+
+          <!-- Prospect QA External Link Button -->
+          <a href="https://brotherpolo.github.io/prospectqa" target="_blank" rel="noopener noreferrer" id="nav-prospectqa" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all">
+            <i class="fa-solid fa-circle-question text-base shrink-0"></i>
+            <span class="sidebar-label">Prospect QA</span>
+          </a>
+        </div>
+
+        <div class="px-4 pt-3 pb-1 sidebar-extra">
+          <span class="text-[10px] font-bold tracking-wider opacity-50 uppercase">Clusters</span>
+        </div>
+
+        <div class="px-3 flex flex-col gap-1 sidebar-extra max-h-56 overflow-y-auto no-scrollbar" id="sidebar-cluster-list">
+        </div>
+      </div>
+
+      <div class="flex flex-col">
+        <div class="px-4 py-1.5 flex items-center justify-between text-[11px] font-mono font-medium opacity-40 select-none">
+          <span class="sidebar-label tracking-wider uppercase">Version</span>
+          <span class="mx-auto sidebar-extra font-semibold">v0.96</span>
+        </div>
+
+        <div class="p-3 border-t border-slate-200/50 flex flex-col gap-2">
+          <div class="sidebar-item flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-500/10 border border-slate-500/20">
+            <div class="flex items-center gap-2 overflow-hidden">
+              <div id="sidebar-user-avatar-container" class="w-7 h-7 rounded-lg bg-slate-500/20 flex items-center justify-center text-xs shrink-0 overflow-hidden">
+                <i class="fa-solid fa-user" id="sidebar-default-user-icon"></i>
+              </div>
+              <span id="user-display-email" class="text-xs font-semibold truncate sidebar-label max-w-[120px]">user</span>
+            </div>
+            <button id="btn-sign-out" title="Sign Out" class="sidebar-label opacity-60 hover:opacity-100 hover:text-rose-500 p-1 transition-colors">
+              <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main id="main-content">
+      
+      <section id="page-canvas" class="app-page">
+        <header class="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 sm:gap-1.5 p-1.5 rounded-2xl glass-panel w-max max-w-[94vw] overflow-x-auto no-scrollbar shadow-md">
+          <div class="flex items-center px-2 sm:px-3 py-1 font-bold text-xs sm:text-sm tracking-tight border-r border-slate-500/30 shrink-0">
+            <i class="fa-solid fa-project-diagram mr-1.5 text-indigo-600"></i>
+            <span class="hidden sm:inline">Adam Pollack | PPSC</span>
+          </div>
+
+          <button id="btn-select-mode" title="Select & Reposition (V)" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-arrow-pointer"></i>
+            <span class="hidden md:inline">Select</span>
+          </button>
+
+          <button id="btn-connect-mode" title="Connect Bidirectional Nodes (C)" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-share-nodes"></i>
+            <span class="hidden md:inline">Connect</span>
+          </button>
+
+          <button id="btn-connect-directed-mode" title="Connect Green Dotted Flow (A)" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-ellipsis text-emerald-500"></i>
+            <span class="hidden md:inline">Dotted Flow</span>
+          </button>
+
+          <button id="btn-pan-mode" title="Pan Canvas (H / Spacebar)" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition-all bg-indigo-600 text-white shadow-sm shrink-0">
+            <i class="fa-solid fa-hand"></i>
+            <span class="hidden md:inline">Pan</span>
+          </button>
+
+          <div class="h-4 sm:h-5 w-px bg-slate-500/30 mx-0.5 sm:mx-1 shrink-0"></div>
+
+          <button id="btn-undo" title="Undo (Ctrl+Z)" class="flex items-center px-2 sm:px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0 opacity-55 hover:opacity-100 disabled:opacity-20" disabled>
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+
+          <button id="btn-redo" title="Redo (Ctrl+Y)" class="flex items-center px-2 sm:px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0 opacity-55 hover:opacity-100 disabled:opacity-20" disabled>
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+
+          <div class="h-4 sm:h-5 w-px bg-slate-500/30 mx-0.5 sm:mx-1 shrink-0"></div>
+
+          <button id="btn-select-all" title="Select Entire Diagram (Ctrl+A)" class="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-object-group"></i>
+            <span class="hidden lg:inline">Select All</span>
+          </button>
+
+          <button id="btn-open-add-modal" title="Add Node (Shift + Plus)" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-circle-plus"></i>
+            <span class="hidden sm:inline">Add</span>
+          </button>
+
+          <button id="btn-delete-selected" title="Delete Selected (Del / Backspace)" class="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-trash-can"></i>
+            <span class="hidden lg:inline">Delete</span>
+          </button>
+
+          <button id="btn-export-png" title="Export to PNG" class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-file-image"></i>
+            <span class="hidden sm:inline">PNG</span>
+          </button>
+
+          <button id="btn-reset-default" title="Reset Diagram to Original Template" class="hidden items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-500 hover:bg-amber-500/10 rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+
+          <button id="btn-reset-view" title="Center Diagram" class="flex items-center px-2 sm:px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0">
+            <i class="fa-solid fa-compress"></i>
+          </button>
+
+          <div class="h-4 sm:h-5 w-px bg-slate-500/30 mx-0.5 sm:mx-1 shrink-0"></div>
+
+          <button id="btn-theme-toggle" title="Cycle Theme: Light -> Dark -> Absolute Black" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all shrink-0 hover:bg-slate-500/10">
+            <i id="theme-toggle-icon" class="fa-solid fa-sun text-amber-500 text-sm"></i>
+            <span id="theme-toggle-text" class="hidden md:inline font-medium">Light</span>
+          </button>
+
+          <div class="h-4 sm:h-5 w-px bg-slate-500/30 mx-0.5 sm:mx-1 shrink-0"></div>
+
+          <div id="save-status-pill" class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium border border-slate-500/30 rounded-xl bg-slate-500/5 shadow-xs shrink-0">
+            <div id="save-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
+            <span id="save-status-text" class="whitespace-nowrap">Cloud Synced</span>
+          </div>
+        </header>
+
+        <div id="board-viewport">
+          <div id="world-layer">
+            <svg id="svg-layer">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
+                </marker>
+              </defs>
+              <g id="edges-group"></g>
+            </svg>
+            <div id="nodes-container"></div>
+          </div>
+          
+          <div id="node-inline-editor" class="modal-box">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-500/20 text-[11px] font-semibold">
+              <span>Edit Node Properties</span>
+              <button id="btn-inline-delete-node" class="text-rose-500 hover:text-rose-700 p-1" title="Delete Node">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </div>
+            <div class="flex items-center gap-1.5 border border-slate-500/20 rounded-lg p-1 bg-slate-500/5 flex-wrap">
+              <div class="flex items-center gap-0.5">
+                <button type="button" id="btn-inline-bold" class="w-6 h-6 rounded hover:bg-slate-500/20 flex items-center justify-center font-bold text-xs" title="Bold">B</button>
+                <button type="button" id="btn-inline-italic" class="w-6 h-6 rounded hover:bg-slate-500/20 flex items-center justify-center italic text-xs" title="Italic">I</button>
+                <button type="button" id="btn-inline-underline" class="w-6 h-6 rounded hover:bg-slate-500/20 flex items-center justify-center underline text-xs" title="Underline">U</button>
+              </div>
+              <div class="h-4 w-px bg-slate-500/20 mx-0.5"></div>
+              <select id="select-inline-fontsize" class="text-[11px] font-medium bg-transparent border border-slate-500/30 rounded px-1.5 py-0.5 focus:outline-none">
+                <option value="" class="bg-slate-800 text-white">Font Size</option>
+                <option value="11px" class="bg-slate-800 text-white">Small (11px)</option>
+                <option value="13.5px" class="bg-slate-800 text-white">Normal (13.5px)</option>
+                <option value="16px" class="bg-slate-800 text-white">Large (16px)</option>
+                <option value="20px" class="bg-slate-800 text-white">Heading (20px)</option>
+              </select>
+            </div>
+            <textarea id="node-inline-textarea" rows="2" placeholder="Node title..."></textarea>
+            <div class="flex flex-col border-t border-slate-500/20 pt-2 gap-2">
+              <span class="text-[10px] font-bold opacity-60 uppercase">Link URL (Optional)</span>
+              <input type="url" id="node-inline-url" placeholder="https://example.com" class="modal-input w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <span class="text-[10px] font-bold opacity-60 uppercase">Link Caption (Optional)</span>
+              <input type="text" id="node-inline-caption" placeholder="Display label..." class="modal-input w-full rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <span class="text-[10px] font-bold opacity-60 uppercase">Color</span>
+              <div class="grid grid-cols-8 gap-1.5" id="inline-color-pickers"></div>
+              <span class="text-[10px] font-bold opacity-60 uppercase mt-1">Background (Pastel)</span>
+              <div class="grid grid-cols-8 gap-1.5" id="inline-bg-color-pickers"></div>
+              <span class="text-[10px] font-bold opacity-60 uppercase mt-1">Text Color</span>
+              <div class="flex gap-1.5" id="inline-text-color-pickers"></div>
+              <span class="text-[10px] font-bold opacity-60 uppercase mt-1">Shape</span>
+              <div class="grid grid-cols-4 gap-1.5" id="inline-shape-pickers"></div>
+              <div class="flex justify-end pt-1">
+                <button id="btn-inline-save" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-sm">
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="marquee-box"></div>
+        </div>
+
+        <div class="hidden sm:flex absolute bottom-5 left-5 z-40 glass-panel px-3.5 py-2 rounded-xl text-xs items-center gap-3">
+          <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-slate-500/10 border border-slate-500/30 rounded font-mono text-[10px]">Ctrl + Z / Y</kbd> undo/redo</span>
+          <span class="opacity-40">•</span>
+          <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-slate-500/10 border border-slate-500/30 rounded font-mono text-[10px]">Shift + +</kbd> new node</span>
+          <span class="opacity-40">•</span>
+          <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-slate-500/10 border border-slate-500/30 rounded font-mono text-[10px]">C / A</kbd> connect modes</span>
+          <span class="opacity-40">•</span>
+          <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-slate-500/10 border border-slate-500/30 rounded font-mono text-[10px]">Double-tap</kbd> edit label</span>
+        </div>
+
+        <div class="absolute bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 glass-panel rounded-2xl flex items-center p-1 sm:p-1.5 gap-1">
+          <button id="btn-zoom-out" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-slate-500/10 transition-colors active:scale-95">
+            <i class="fa-solid fa-minus text-xs"></i>
+          </button>
+          <span id="zoom-level-text" class="text-[11px] sm:text-xs font-semibold px-1 min-w-[38px] text-center">100%</span>
+          <button id="btn-zoom-in" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-slate-500/10 transition-colors active:scale-95">
+            <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+          <div class="h-4 w-px bg-slate-500/30 mx-0.5"></div>
+          <button id="btn-center-diagram" title="Center Diagram" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-slate-500/10 transition-colors active:scale-95">
+            <i class="fa-solid fa-crosshairs text-xs"></i>
+          </button>
+        </div>
+      </section>
+
+      <section id="page-hierarchy" class="app-page hidden overflow-y-auto p-4 sm:p-8">
+        <div class="fixed top-4 right-4 sm:top-6 sm:right-8 z-50">
+          <button id="btn-hierarchy-theme-toggle" title="Cycle Theme: Light -> Dark -> Absolute Black" class="glass-panel flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-2xl shadow-md transition-all hover:scale-105 active:scale-95">
+            <i id="hierarchy-theme-toggle-icon" class="fa-solid fa-sun text-amber-500 text-sm"></i>
+            <span id="hierarchy-theme-toggle-text" class="font-medium">Light</span>
+          </button>
+        </div>
+
+        <div class="max-w-4xl mx-auto flex flex-col gap-6 pb-20 pt-10 sm:pt-4">
+          <div class="hierarchy-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 border p-6 rounded-2xl shadow-sm transition-colors">
+            <div>
+              <h1 class="text-xl font-bold tracking-tight">Adam's PPSC Hierarchy</h1>
+              <p class="text-xs opacity-60 mt-1">Direct representation of graph nodes and clusters dynamically linked with the canvas.</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="btn-hierarchy-add-root" class="px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-plus"></i> Add Item
+              </button>
+              <button id="btn-hierarchy-export-pdf" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-xl transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-file-pdf"></i> Export PDF
+              </button>
+              <button id="btn-collapse-all-tree" class="hierarchy-btn-secondary px-3 py-1.5 text-xs font-semibold border rounded-xl transition-all">
+                <i class="fa-solid fa-angles-up mr-1"></i> Collapse All
+              </button>
+              <button id="btn-expand-all-tree" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-xl transition-all">
+                <i class="fa-solid fa-angles-down mr-1"></i> Expand All
+              </button>
+            </div>
+          </div>
+
+          <div id="tree-container" class="hierarchy-surface border p-6 sm:p-8 rounded-2xl shadow-sm flex flex-col gap-4 transition-colors">
+          </div>
+        </div>
+      </section>
+
+      <!-- Inventory List Page Section -->
+      <section id="page-inventory" class="app-page hidden overflow-y-auto p-4 sm:p-8">
+        <div class="max-w-6xl mx-auto flex flex-col gap-6 pb-20 pt-10 sm:pt-4">
+          <div class="hierarchy-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 border p-6 rounded-2xl shadow-sm transition-colors">
+            <div>
+              <h1 class="text-xl font-bold tracking-tight">Nodes Inventory List</h1>
+              <p class="text-xs opacity-60 mt-1">Complete record database of all canvas nodes with properties and location metrics.</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-40"></i>
+                <input type="text" id="inventory-search" placeholder="Search records..." class="modal-input rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 w-56" />
+              </div>
+            </div>
+          </div>
+
+          <div class="hierarchy-surface border rounded-2xl shadow-sm overflow-hidden transition-colors">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-slate-500/20 opacity-70 font-semibold uppercase tracking-wider text-[10px]">
+                    <th class="p-4 w-10">Edit</th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="label">
+                      Node Label <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="color">
+                      Cluster / Color <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="shape">
+                      Shape <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="position">
+                      Position (X, Y) <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="url">
+                      Link URL <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table-body" class="divide-y divide-slate-500/10">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tasks Page Section -->
+      <section id="page-tasks" class="app-page hidden overflow-y-auto p-4 sm:p-8">
+        <div class="max-w-6xl mx-auto flex flex-col gap-6 pb-20 pt-10 sm:pt-4">
+          <div class="hierarchy-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 border p-6 rounded-2xl shadow-sm transition-colors">
+            <div>
+              <h1 class="text-xl font-bold tracking-tight">Tasks Management</h1>
+              <p class="text-xs opacity-60 mt-1">Manage actions, descriptions, and due dates tied directly to canvas nodes.</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-40"></i>
+                <input type="text" id="tasks-search" placeholder="Search tasks..." class="modal-input rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 w-56" />
+              </div>
+              <button id="btn-toggle-completed-tasks" class="px-3 py-1.5 text-xs font-semibold border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border-slate-500/30 text-slate-600 dark:text-slate-300 hover:bg-slate-500/10">
+                <i class="fa-regular fa-eye-slash text-xs"></i>
+                <span id="toggle-completed-tasks-text">Hide Completed</span>
+              </button>
+              <button id="btn-open-task-modal" class="px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-plus"></i> New Task
+              </button>
+            </div>
+          </div>
+
+          <div class="hierarchy-surface border rounded-2xl shadow-sm overflow-hidden transition-colors">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-slate-500/20 opacity-70 font-semibold uppercase tracking-wider text-[10px]">
+                    <th class="p-4 w-12 text-center">Status</th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="desc">
+                      Task Description <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="node">
+                      Linked Node <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 cursor-pointer hover:text-indigo-500 transition-colors select-none" data-sort="date">
+                      Due Date <i class="fa-solid fa-sort ml-1 opacity-50"></i>
+                    </th>
+                    <th class="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tasks-table-body" class="divide-y divide-slate-500/10">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar Page Section -->
+      <section id="page-calendar" class="app-page hidden overflow-y-auto p-4 sm:p-8">
+        <div class="max-w-6xl mx-auto flex flex-col gap-6 pb-20 pt-10 sm:pt-4">
+          <div class="hierarchy-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 border p-6 rounded-2xl shadow-sm transition-colors">
+            <div>
+              <h1 class="text-xl font-bold tracking-tight">Tasks Calendar</h1>
+              <p class="text-xs opacity-60 mt-1">Monthly view of task due dates linked to canvas nodes.</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="flex items-center gap-2 glass-panel p-1 rounded-xl">
+                <button id="btn-cal-prev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-500/10 transition-colors">
+                  <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                <button id="btn-cal-today" class="px-3 py-1 text-xs font-semibold rounded-lg hover:bg-slate-500/10 transition-colors">
+                  Today
+                </button>
+                <button id="btn-cal-next" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-500/10 transition-colors">
+                  <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+              </div>
+              <h2 id="calendar-month-year" class="text-base font-bold min-w-[140px] text-center"></h2>
+              <button id="btn-calendar-open-task" class="px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-plus"></i> New Task
+              </button>
+            </div>
+          </div>
+
+          <div class="hierarchy-surface border rounded-2xl shadow-sm overflow-hidden p-4 transition-colors">
+            <!-- Day Headers -->
+            <div class="grid grid-cols-7 text-center font-bold text-[11px] uppercase tracking-wider opacity-60 pb-3 border-b border-slate-500/20">
+              <div>Sun</div>
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+            </div>
+            <!-- Monthly Calendar Grid -->
+            <div id="calendar-grid" class="grid grid-cols-7 auto-rows-fr gap-1 sm:gap-2 pt-2">
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Add Node Modal -->
+  <div id="add-node-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="modal-box rounded-2xl p-5 sm:p-6 w-full max-w-sm flex flex-col gap-4 max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex items-center justify-between">
+        <h3 id="add-modal-title" class="font-bold text-base">Create New Node</h3>
+        <button id="btn-close-modal" class="opacity-60 hover:opacity-100 p-1 transition-opacity">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Parent Item</label>
+        <div id="parent-dropdown-container" class="relative w-full">
+          <button type="button" id="parent-dropdown-btn" class="modal-input w-full flex items-center justify-between rounded-xl p-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+            <span id="parent-dropdown-selected" class="flex items-center gap-1.5">
+              <span class="opacity-60 font-medium px-2 py-0.5">None (Root Node)</span>
+            </span>
+            <i class="fa-solid fa-chevron-down text-[11px] opacity-50 mr-1 transition-transform"></i>
+          </button>
+          
+          <div id="parent-dropdown-menu" class="modal-dropdown-menu hidden absolute top-full left-0 right-0 mt-1 max-h-64 overflow-hidden rounded-xl z-50 p-2 flex flex-col gap-1.5 shadow-xl">
+            <div class="relative w-full">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] opacity-40"></i>
+              <input type="text" id="parent-search-input" placeholder="Search parents..." class="modal-input w-full rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <div id="parent-dropdown-items" class="max-h-48 overflow-y-auto no-scrollbar flex flex-col gap-1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <label class="modal-label text-xs font-semibold">Node Label</label>
+          <div class="flex items-center gap-1.5 border border-slate-500/20 rounded-lg p-1 bg-slate-500/5">
+            <div class="flex items-center gap-0.5">
+              <button type="button" id="btn-modal-bold" class="w-5 h-5 rounded hover:bg-slate-500/20 flex items-center justify-center font-bold text-[11px]" title="Bold">B</button>
+              <button type="button" id="btn-modal-italic" class="w-5 h-5 rounded hover:bg-slate-500/20 flex items-center justify-center italic text-[11px]" title="Italic">I</button>
+              <button type="button" id="btn-modal-underline" class="w-5 h-5 rounded hover:bg-slate-500/20 flex items-center justify-center underline text-[11px]" title="Underline">U</button>
+            </div>
+            <div class="h-3.5 w-px bg-slate-500/20"></div>
+            <select id="select-modal-fontsize" class="text-[10px] font-medium bg-transparent border border-slate-500/30 rounded px-1 py-0.5 focus:outline-none">
+              <option value="" class="bg-slate-800 text-white">Size</option>
+              <option value="11px" class="bg-slate-800 text-white">Small</option>
+              <option value="13.5px" class="bg-slate-800 text-white">Normal</option>
+              <option value="16px" class="bg-slate-800 text-white">Large</option>
+              <option value="20px" class="bg-slate-800 text-white">Heading</option>
+            </select>
+          </div>
+        </div>
+        <textarea id="node-label-input" rows="2" class="modal-input w-full rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Solution Architect"></textarea>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Link URL (Optional)</label>
+        <input type="url" id="node-modal-url" placeholder="https://example.com" class="modal-input w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Link Caption (Optional)</label>
+        <input type="text" id="node-modal-caption" placeholder="Display label..." class="modal-input w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Category Color (15 Choices)</label>
+        <div class="grid grid-cols-5 gap-1.5" id="color-options">
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Background Color (Pastel)</label>
+        <div class="grid grid-cols-5 gap-1.5" id="bg-color-options">
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Text Color</label>
+        <div class="flex gap-1.5" id="modal-text-color-options"></div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Node Shape (8 Variations)</label>
+        <div class="grid grid-cols-4 gap-1.5" id="shape-options">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="btn-cancel-modal" class="modal-btn-cancel px-4 py-2 text-xs font-semibold rounded-xl transition-colors">Cancel</button>
+        <button id="btn-confirm-add" class="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow">Create Node</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Task Modal with Custom Pill Dropdown -->
+  <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="modal-box rounded-2xl p-5 sm:p-6 w-full max-w-sm flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <h3 id="task-modal-title" class="font-bold text-base">Create New Task</h3>
+        <button id="btn-close-task-modal" class="opacity-60 hover:opacity-100 p-1 transition-opacity">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Task Description</label>
+        <textarea id="task-desc-input" rows="2" class="modal-input w-full rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Review requirements..."></textarea>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Due Date</label>
+        <input type="date" id="task-date-input" class="modal-input w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Linked Node</label>
+        <div id="task-node-dropdown-container" class="relative w-full">
+          <button type="button" id="task-node-dropdown-btn" class="modal-input w-full flex items-center justify-between rounded-xl p-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+            <span id="task-node-dropdown-selected" class="flex items-center gap-1.5">
+              <span class="opacity-60 font-medium px-2 py-0.5">Select a Node...</span>
+            </span>
+            <i class="fa-solid fa-chevron-down text-[11px] opacity-50 mr-1 transition-transform"></i>
+          </button>
+          
+          <div id="task-node-dropdown-menu" class="modal-dropdown-menu hidden absolute top-full left-0 right-0 mt-1 max-h-64 overflow-hidden rounded-xl z-50 p-2 flex flex-col gap-1.5 shadow-xl">
+            <div class="relative w-full">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] opacity-40"></i>
+              <input type="text" id="task-node-search-input" placeholder="Search nodes..." class="modal-input w-full rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <div id="task-node-dropdown-items" class="max-h-48 overflow-y-auto no-scrollbar flex flex-col gap-1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="btn-cancel-task-modal" class="modal-btn-cancel px-4 py-2 text-xs font-semibold rounded-xl transition-colors">Cancel</button>
+        <button id="btn-confirm-task" class="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow">Save Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Completion / Detail Modal -->
+  <div id="task-completion-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="modal-box rounded-2xl p-5 sm:p-6 w-full max-w-sm flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base">Task Details</h3>
+        <button id="btn-close-completion-modal" class="opacity-60 hover:opacity-100 p-1 transition-opacity">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="completion-modal-node-pill" class="flex items-center gap-2"></div>
+
+      <div class="flex flex-col gap-1">
+        <label class="modal-label text-xs font-semibold">Task Description</label>
+        <p id="completion-modal-desc" class="text-xs font-medium p-2.5 bg-slate-500/10 border border-slate-500/20 rounded-xl leading-relaxed"></p>
+      </div>
+
+      <div class="flex items-center justify-between p-2.5 bg-slate-500/10 border border-slate-500/20 rounded-xl">
+        <span class="text-xs font-semibold">Mark Completed</span>
+        <input type="checkbox" id="completion-status-checkbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Completion Date & Time</label>
+        <input type="datetime-local" id="completion-time-input" class="modal-input w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="modal-label text-xs font-semibold">Completion Notes</label>
+        <textarea id="completion-notes-input" rows="3" class="modal-input w-full rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Add resolution notes or comments..."></textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button id="btn-delete-completion-task" class="px-3 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors">
+          <i class="fa-solid fa-trash-can mr-1"></i> Delete
+        </button>
+        <div class="flex gap-2">
+          <button id="btn-cancel-completion-modal" class="modal-btn-cancel px-4 py-2 text-xs font-semibold rounded-xl transition-colors">Cancel</button>
+          <button id="btn-save-completion" class="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 glass-panel border border-slate-500/30 text-xs px-4 py-2 rounded-xl shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none text-center whitespace-nowrap">
+    Notice
+  </div>
+
+  <div id="cluster-color-popover" class="fixed z-[150] hidden glass-panel border border-slate-500/30 p-2 rounded-2xl shadow-2xl grid grid-cols-5 gap-1.5 w-max max-w-[200px]">
+  </div>
+
+  <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 hidden">
+    <div class="modal-box rounded-2xl p-6 sm:p-7 w-full max-w-sm shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-lock text-indigo-600 text-lg"></i>
+        <h3 class="font-bold text-base">Authorized Sign In</h3>
+      </div>
+      <p class="text-xs opacity-60">Sign in with an authorized account to access and edit the whiteboard.</p>
+      
+      <div class="flex flex-col gap-2.5">
+        <input type="email" id="login-email" placeholder="Email" autocomplete="username" class="modal-input w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" class="modal-input w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <p id="auth-error-msg" class="text-xs text-rose-600 hidden font-medium"></p>
+
+      <button id="btn-login-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+        Sign In
+      </button>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App Logic -->
+  <script src="app.js" defer></script>
+</body>
+</html>
